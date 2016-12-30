@@ -7,3 +7,5 @@ Supports **only** Ubuntu 14.04 Trustg version of Trend Micro's Deep Security Age
 ### update runtime config
 ### view runtime config changes
 ### bosh deploy runtime config
+### troubleshoot deployment of addon
+### notes
