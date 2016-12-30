@@ -1,3 +1,0 @@
-#!/bin/sh
-
-exec "/var/vcap/packages/trend-micro-9.6.2/ds_agent/dsa" -a "dsa_query" -w "/var/vcap/data/trend-micro/ds_agent" -- $@
