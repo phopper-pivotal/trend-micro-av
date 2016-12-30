@@ -1,6 +1,6 @@
 # A bosh add-on for Trend Micro Deep Security Agent
 
-Supports **only** Ubuntu 14.04 Trustg version of Trend Micro's Deep Security Agennt.
+Supports **only** Ubuntu 14.04 Trusty version of Trend Micro's Deep Security Agennt.
 
 ##  clone this repository
 Let's clone this repository so that we can create bosh releases ourselves, and make changes as needed.
