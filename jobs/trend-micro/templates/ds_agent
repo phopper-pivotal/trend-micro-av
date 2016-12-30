@@ -1,0 +1,246 @@
+#!/bin/bash
+#
+# For RedHat-style chkconfig
+#
+# ds_agent    Trend Micro Deep Security Agent
+#
+# chkconfig:   2345 13 87
+# description: Trend Micro Deep Security Agent
+# processname: ds_agent
+# ^^^^^^^^
+# change file path locations, these files are generated when /etc/init.d/ds_agent runs
+# ^^^^^^^^
+# config:      /var/vcap/data/trend-micro/ds_agent/core/ds_agent.config
+# config:      /var/vcap/data/trend-micro/ds_agent/core/ds_agent.crt
+# config:      /var/vcap/data/trend-micro/ds_agent/core/ds_agent_dsm.crt
+# pidfile:     /var/vcap/sys/run/trend-micro/ds_agent.pid
+#
+#
+# For SuSE-style chkconfig/insserv
+#
+### BEGIN INIT INFO
+# Provides:          ds_agent
+# Required-Start:    $network $syslog
+# Required-Stop:     $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Trend Micro Deep Security Agent
+# Description:       Trend Micro Deep Security Agent
+#	The ds_agent program communicates with the Trend Micro
+#	Deep Security Manager and controls the local firewall
+#	and content filtering rules.
+### END INIT INFO
+
+exec="/var/vcap/packages/trend-micro-9.6.2/ds_agent"
+prog=`basename $exec`
+opts='-w /var/vcap/data/trend-micro/ds_agent -b -i -e /var/vcap/packages/trend-micro-9.6.2/ext'
+lockfile=/var/vcap/sys/run/trend-micro/$prog
+lockdir=$(dirname "$lockfile")
+pidfile=/var/vcap/sys/run/trend-micro/ds_agent.pid
+iptablesRule='INPUT -j ACCEPT -m state --state NEW --proto tcp --dport 4118'
+
+export LD_LIBRARY_PATH="/var/vcap/packages/trend-micro-9.6.2/ds_agent/lib"
+test -f "/var/vcap/packages/trend-micro-9.6.2/bin/lib/libjemalloc.so" && export LD_PRELOAD="/var/vcap/packages/trend-micro-9.6.2/bin/lib/libjemalloc.so"
+
+test -e /etc/sysconfig/$prog && . /etc/sysconfig/$prog
+test -e /etc/default/$prog && . /etc/default/$prog
+
+if [ -r /etc/network/interfaces ];then
+    # this is debian
+    os_daemon_start=start_daemon
+    os_daemon_stop=stop_daemon
+    start_daemon() {
+        local exec=$1 ; shift
+	local opts=$@
+	/sbin/start-stop-daemon --start --quiet --pidfile $pidfile \
+		--exec $exec -- $opts
+    }
+    stop_daemon() {
+	local pid=$(cat $pidfile 2>/dev/null)
+	/sbin/start-stop-daemon --stop --quiet --pidfile $pidfile \
+		--oknodo --exec $exec
+	local x
+	[ -z "$pid" ] && return 0
+	for ((x=0;x<100;x++)) ; do
+	    local running="$(readlink /proc/$pid/exe 2>/dev/null)"
+	    test "$running" != "$exec" && return 0
+	    sleep 0.1
+	    test $(($x % 10)) -eq 0 && echo -n .
+	    test $x -eq 50 && kill -9 $pid
+	done
+	return 1
+    }
+    action() {
+        echo -n $1
+        shift
+        $*
+        rc_status -v
+    }
+    rc_status() {
+        local ret=$?
+	if [ "$ret" = 0 ]; then 
+		echo [OK] 
+	else
+		echo [ERROR]
+	fi
+        return ${ret}
+    }
+else
+    echo "Unsupported distribution"
+    exit 1
+fi
+
+clearArpCache() {
+    local ip
+    local flags
+    cat /proc/net/arp | grep -v ^IP | while read ip type flags hw mask device ; do
+        if [ "$(( $flags & 0x4))" = 0 ]; then
+                /sbin/arp -d "${ip}" >/dev/null 2>&1
+        fi
+    done
+}
+
+iptablesRuleAdd() {
+    if [ -f /etc/use_dsa_with_iptables ]; then
+        return
+    fi
+
+	# if iptable is off, don't touch it
+    lsmod |grep -e 'ip6\?table_filter' > /dev/null 2>&1
+    if [ $? -eq 1 ]; then
+        return
+    fi
+
+    iptablesRuleDel
+
+    for command in iptables ip6tables; do
+        $command -I ${iptablesRule} 2>/dev/null
+    done
+}
+
+iptablesRuleDel() {
+    if [ -f /etc/use_dsa_with_iptables ]; then
+        return
+    fi
+
+	# if iptable is off, don't touch it
+    lsmod |grep -e 'ip6\?table_filter' > /dev/null 2>&1
+    if [ $? -eq 1 ]; then
+        return
+    fi
+	
+    for command in iptables ip6tables; do
+        # Just in case our rule is in the table multiple times from an improper shutdown,
+        # keep deleting rules that exactly match the one we add.
+
+        try=1
+        true
+        while [ $? -eq 0  -a  $try -lt 9 ]; do
+            try=`expr $try + 1`
+            $command -D ${iptablesRule} 2>/dev/null
+        done
+    done
+}
+
+start() {
+    iptablesRuleAdd
+
+    # In 9.5, driver will be started by agent if needed, so no need to do it here.
+
+    if [ -f $pidfile ]; then
+        pidFromFile=$(cat $pidfile)
+        for pid in $(pidof ${prog}); do
+            if [ "${pid}" -eq "${pidFromFile}" ]; then
+                echo -n $"$prog already running"
+                false
+                rc_status -v
+                return 1
+            fi
+        done
+        # If we get down here, the pid from the file didn't match a running process.
+        rm -f $pidfile
+    fi
+    
+    echo -n $"Starting $prog: "
+    if [ -f /etc/dsva-bld ]; then
+        echo -n " DSVA "
+        (cd `dirname $exec` && ulimit -S -c 0 && ulimit -n 8192 >/dev/null 2>&1 && $os_daemon_start $exec $opts)
+    else
+        (cd `dirname $exec` && ulimit -S -c 0 >/dev/null 2>&1 && $os_daemon_start $exec $opts)
+    fi
+
+    rc_status -v
+    retval=$?
+    [ ! -d "$lockdir" ] && mkdir -p "$lockdir"
+    if [ $retval -eq 0 ] ; then
+        touch $lockfile
+        clearArpCache
+    fi
+    return $retval
+}
+
+stop() {
+    quiet=${1:-"0"}
+    rm -f $lockfile
+    [ "${quiet}" -ne 0  -a  ! -f "$pidfile" ] && return 0
+    echo -n $"Stopping $prog: "
+    $os_daemon_stop $prog
+    rc_status -v
+    retval=$?
+    rm -f $pidfile
+    iptablesRuleDel
+
+    local x agentPids
+    for ((x=0;x<10;x++)) ; do
+        agentPids=`pidof $exec`
+        if [ $? -ne 0 ]; then
+            break
+        fi
+        sleep 1
+    done
+    if [ -n "$agentPids" ]; then
+        echo "Stop remaining processes"
+        kill -s KILL $agentPids
+    fi
+
+    [ -x /etc/init.d/ds_filter ] && (lsmod | grep -m 1 dsa_ > /dev/null) && /etc/init.d/ds_filter stop
+    
+    (initctl status ds_filter 2> /dev/null | grep start > /dev/null) && initctl stop ds_filter
+
+    return $retval
+}
+
+reset() {
+   /var/vcap/packages/trend-micro-9.6.2/ds_agent/dsa_control -r
+}
+
+restart() {
+    stop
+    start
+}	
+
+reload() {
+    restart
+}
+
+fdrstatus() {
+    status $exec
+}
+
+case "$1" in
+    start|stop|reset|restart|reload)
+        $1
+        ;;
+    stopquiet)
+        stop 1
+        ;;
+    status)
+        fdrstatus
+        ;;
+    condrestart)
+  	[ -f $lockfile ] && restart || :
+	;;
+    *)
+        echo $"Usage: $0 {start|stop|status|reset|restart|condrestart|reload}"
+        exit 1
+esac

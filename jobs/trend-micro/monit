@@ -1,0 +1,5 @@
+check process trend-micro
+  with pidfile /var/vcap/sys/run/trend-micro/ds_agent.pid
+  start program "/var/vcap/jobs/trend-micro/bin/ds_agent start" with timeout 300 seconds
+  stop program "/var/vcap/jobs/trend-micro/bin/ds_agent stop"
+  group vcap

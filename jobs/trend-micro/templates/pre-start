@@ -1,0 +1,15 @@
+#!/bin/bash -ux
+
+mkdir -p \
+  /var/vcap/data/trend-micro \
+  /var/vcap/data/tmp \
+  /var/vcap/sys/log/trend-micro \
+  /var/vcap/sys/run/trend-micro
+
+chown -R vcap:vcap \
+  /var/vcap/data/trend-micro \
+  /var/vcap/data/tmp \
+  /var/vcap/sys/log/trend-micro \
+  /var/vcap/sys/run/trend-micro
+
+cp /var/vcap/jobs/trend-micro/bin/schedule-scan /etc/cron.hourly/

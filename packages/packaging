@@ -1,0 +1,4 @@
+set -eu
+
+tar xzf clamav/trend-micro-9.6.2.tar.gz
+cd trend-micro-9.6.2
