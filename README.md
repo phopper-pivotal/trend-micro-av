@@ -2,9 +2,22 @@
 
 Supports **only** Ubuntu 14.04 Trustg version of Trend Micro's Deep Security Agennt.
 
+##  clone this repository
+Let's clone this repository so that we can create bosh releases ourselves, and make changes as needed.
+```
+git clone https://github.com/phopper-pivotal/trend-micro-av.git
+``` 
+## create a bosh release
+We will need to create a bosh release for this addon.
+```
+% cd trend-micro-av
+
+% bosh create release
+```
 ## Trend Micro's Deep Security bosh add-ons - runtime config
-### clone this repository
+###
 ### create the runtime config
+We will need to create the bosh addon runtime configuration.
 ```yaml
 releases:
 - {name: trend-micro, version: 9.6.2}
