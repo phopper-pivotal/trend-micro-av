@@ -1,2 +1,4 @@
-# abort script on any command that exits with a non zero value
-set -e
+set -eu
+
+tar xzf trend-micro/trend-micro-9.6.2.tar.gz
+cd trend-micro-9.6.2
