@@ -1,5 +1,11 @@
 ---
 name: trend-micro
 templates:
+   ds_agent: ds_agent
+   pre-start: bin/pre-start
+   schedule-scan: bin/schedule-scan
 
 packages:
+   - trend-micro-9.6.2
+
+properties:
