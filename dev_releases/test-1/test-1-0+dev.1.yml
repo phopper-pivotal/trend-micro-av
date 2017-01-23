@@ -1,0 +1,20 @@
+---
+packages:
+- name: trend-micro-9.6.2
+  version: 88fc7b21e95966b1b630c87701cf647cd09dbc33
+  fingerprint: 88fc7b21e95966b1b630c87701cf647cd09dbc33
+  sha1: bfe81d0c7ea9c6315808f37eaf4ae1ce1b46b6a6
+  dependencies: []
+jobs:
+- name: trend-micro
+  version: a2bea4330177ee59c95c1d37baed29cb41c3c517
+  fingerprint: a2bea4330177ee59c95c1d37baed29cb41c3c517
+  sha1: 085ef1ca7f5a22defa00c2c1c1e8cee9c4e72e1a
+license:
+  version: 453ad5376f36619722d6dfcabcde15ee001cf89f
+  fingerprint: 453ad5376f36619722d6dfcabcde15ee001cf89f
+  sha1: 3541d42ab7f14f9d34272cd0bf67fe99766411f5
+commit_hash: 665ee9a8
+uncommitted_changes: false
+name: test-1
+version: 0+dev.1
